@@ -6,6 +6,7 @@ import fr.miguel.component.ModDataComponentTypes;
 import fr.miguel.menu.AuraBattleMenu;
 import fr.miguel.network.BattlePayloads;
 import fr.miguel.player.CustomPlayer;
+import fr.miguel.pve.game.PveManager;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
@@ -108,6 +109,8 @@ public final class BattleManager {
         if (challenger.getUUID().equals(target.getUUID())) throw new BattleException("battle.error.self");
         if (SESSIONS.containsKey(challenger.getUUID())) throw new BattleException("battle.error.you_busy");
         if (SESSIONS.containsKey(target.getUUID())) throw new BattleException("battle.error.target_busy");
+        if (PveManager.isBusy(challenger.getUUID())) throw new BattleException("battle.error.you_busy");
+        if (PveManager.isBusy(target.getUUID())) throw new BattleException("battle.error.target_busy");
 
         BattleSession session = new BattleSession(
                 challenger.getUUID(), target.getUUID(), server.getTickCount() + PENDING_TIMEOUT_TICKS

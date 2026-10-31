@@ -35,8 +35,6 @@
   "gui.screens.battle_challenge.rules": "The looser give the items they bet to the winner",
   "gui.screens.battle_challenge.accept": "Accept",
   "gui.screens.battle_challenge.refuse": "Refuse",
-
-
   "gui.screens.aura_battle.title": "Battle",
   "gui.screens.aura_battle.versus": "Battle versus %s",
   "gui.screens.aura_battle.stake_label": "Your bet (items)",
@@ -61,5 +59,24 @@
   "battle.result.won": "You won the battle! Your loot : %s items et %s aura.",
   "battle.result.lost": "You lost the battle : %s items et %s aura point(s) given.",
   "battle.result.draw": "Time out : draw.",
-  "battle.error.arena": "Unable to create the arena. Combat canceled. Please contact your server's administrator"
+  "battle.error.arena": "Unable to create the arena. Combat canceled. Please contact your server's administrator",
+
+  "attack.miguelaurafarming.strike": "Frappe",
+  "attack.miguelaurafarming.heavy_blow": "Coup lourd",
+  "attack.miguelaurafarming.quick_jab": "Coup rapide",
+  "pve.start": "Combat contre %s (aura %s, %s PV) ! Tes PV : %s. /pve attack <attaque> ou /pve flee",
+  "pve.used": "%s utilise %s !",
+  "pve.miss": "%s esquive !",
+  "pve.hit": "%s perd %s PV (%s/%s).",
+  "pve.down": "%s est à terre !",
+  "pve.fled": "%s prend la fuite !",
+  "pve.status": "Toi : %s/%s PV | %s : %s/%s PV",
+  "pve.timeout": "Trop long : tu fuis le combat.",
+  "pve.result.won": "Victoire ! Aura : %s",
+  "pve.result.lost": "Défaite... Aura : %s",
+  "pve.result.fled": "Fuite. Aura : %s",
+  "pve.result.cancelled": "Combat annulé.",
+  "pve.error.no_combat": "Aucun combat en cours.",
+  "pve.error.unknown_attack": "Attaque inconnue.",
+  "pve.error.not_combatable": "Cette entité n'est pas combattable."
 }

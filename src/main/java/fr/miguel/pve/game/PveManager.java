@@ -17,6 +17,8 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Player;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.random.RandomGenerator;
@@ -31,6 +33,8 @@ public final class PveManager {
     private static final Map<UUID, PveSession> BY_ENTITY = new HashMap<>();
 
     private static MinecraftServer server;
+
+    private static final Logger LOGGER = LoggerFactory.getLogger("PveManager");
 
     private PveManager() {}
 
@@ -66,7 +70,7 @@ public final class PveManager {
 
         if (!(player instanceof ServerPlayer serverPlayer) || !(entity instanceof Mob mob)) return false;
 
-        if (!serverPlayer.isAlive() || serverPlayer.isSpectator() || mob.isAlive()) return false;
+        if (!serverPlayer.isAlive() || serverPlayer.isSpectator() || !mob.isAlive()) return false;
 
         if (isBusy(serverPlayer.getUUID()) || BY_ENTITY.containsKey(mob.getUUID())) return false;
 

@@ -4,9 +4,9 @@
   "version": "${version}",
   "name": "MiguelAuraFarming",
   "description": "",
-  "authors": [],
+  "authors": ["Seeting"],
   "contact": {},
-  "license": "All-Rights-Reserved",
+  "license": "GNU GPLv3",
   "icon": "assets/miguelaurafarming/icon.png",
   "environment": "*",
   "entrypoints": {
@@ -30,7 +30,6 @@
   "depends": {
     "fabricloader": ">=${loader_version}",
     "fabric-api": "*",
-    "minecraft": "${minecraft_version}",
-    "fantasy": "${fantasy_version}"
+    "minecraft": "${minecraft_version}"
   }
 }

@@ -12,16 +12,15 @@ import fr.miguel.menu.ModMenuTypes;
 import fr.miguel.network.BattlePayloads;
 import fr.miguel.network.LeftClickPayload;
 import fr.miguel.network.OpenScreenPayload;
+import fr.miguel.pve.game.PveCommand;
+import fr.miguel.pve.game.PveManager;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.resources.Identifier;
 
@@ -43,6 +42,13 @@ public class AuraFarm implements ModInitializer {
         registerPacketEvent();
 
         registerBattleRelated();
+
+        registerPVEBattleRelated();
+    }
+
+    private void registerPVEBattleRelated() {
+        PveManager.registerEvents();
+        PveCommand.register();
     }
 
     private void registerBattleRelated() {
