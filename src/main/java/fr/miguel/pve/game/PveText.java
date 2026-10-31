@@ -6,6 +6,7 @@ import fr.miguel.pve.Combatant;
 import fr.miguel.pve.Side;
 import net.minecraft.network.chat.Component;
 
+@Deprecated(forRemoval = true, since = "2.1-BETA")
 final class PveText {
 
     private PveText() {}

@@ -8,6 +8,7 @@ import fr.miguel.pve.attack.AttackRegistry;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
@@ -26,8 +27,9 @@ import java.util.random.RandomGenerator;
 public final class PveManager {
 
     private static final int TURN_TIMEOUT_TICKS = 20 * 30;
+    private static final int CLOSE_TIMEOUT_TICKS = 20 * 20;
     private static final double MAX_DISTANCE = 32;
-    private static final boolean KILL_ENEMY_ON_WIN = true;
+    private static final boolean KILL_ENEMY_ON_WIN = false;
 
     private static final Map<UUID, PveSession> BY_PLAYER = new HashMap<>();
     private static final Map<UUID, PveSession> BY_ENTITY = new HashMap<>();
@@ -103,78 +105,146 @@ public final class PveManager {
         mob.setPermanentlyInvulnerable(true);
         serverPlayer.setPermanentlyInvulnerable(true);
 
-        serverPlayer.sendSystemMessage(Component.translatable("pve.start",
-                enemySide.name(), (long) enemySide.aura(), enemySide.maxHp(), playerSide.maxHp()));
-        serverPlayer.sendSystemMessage(PveText.status(battle));
+        List<PvePayloads.AttackInfo> infos = new ArrayList<>();
+
+        for (AttackInterface attack : AttackRegistry.all())
+            infos.add(new PvePayloads.AttackInfo(attack.id(), attack.nameKey(),
+                    (int) Math.round(100 * BattleMath.hitChance(playerSide.aura(), enemySide.aura(), attack.accuracy()))));
+
+        ServerPlayNetworking.send(serverPlayer, new PvePayloads.Open(mob.getId(), enemySide.name(),
+                playerSide.hp(), playerSide.maxHp(), enemySide.hp(), enemySide.maxHp(), infos));
         return true;
     }
 
     public static void attack(ServerPlayer player, String attackId) throws PveException {
-        PveSession s = BY_PLAYER.get(player.getUUID());
-        if (s == null) throw new PveException("pve.error.no_combat");
+        PveSession session = BY_PLAYER.get(player.getUUID());
+        if (session == null) throw new PveException("pve.error.no_combat");
         AttackInterface attack = AttackRegistry.get(attackId).orElseThrow(() -> new PveException("pve.error.unknown_attack"));
-        // TODO : restreindre aux attaques que ce joueur possède
 
-        List<BattleEvent> events = s.battle.playerAttack(attack);
-        for (BattleEvent e : events) player.sendSystemMessage(PveText.describe(e, s.battle));
-        player.sendSystemMessage(PveText.status(s.battle));
-
-        if (s.battle.outcome() == PveBattle.Outcome.ONGOING) s.deadlineTick = server.getTickCount() + TURN_TIMEOUT_TICKS;
-        else end(s, player, true);
+        afterTurn(session, player, session.battle.playerAttack(attack));
     }
 
     public static void flee(ServerPlayer player) throws PveException {
-        PveSession s = BY_PLAYER.get(player.getUUID());
-        if (s == null) throw new PveException("pve.error.no_combat");
-        for (BattleEvent e : s.battle.flee()) player.sendSystemMessage(PveText.describe(e, s.battle));
-        end(s, player, true);
+        PveSession session = BY_PLAYER.get(player.getUUID());
+
+        afterTurn(session, player, session.battle.flee());
     }
+
+    public static void onClientClosed(ServerPlayer player) {
+        PveSession session = BY_PLAYER.get(player.getUUID());
+        if (session != null && session.closing) finish(session, player);
+    }
+
+    private static PveSession ongoing(ServerPlayer player) throws PveException {
+        PveSession session = BY_PLAYER.get(player.getUUID());
+        if (session == null || session.closing) throw new PveException("pve.error.no_combat");
+
+        return session;
+    }
+
+    private static void afterTurn(PveSession session, ServerPlayer player, List<BattleEvent> events) {
+        PveBattle battle = session.battle;
+        long delta = 0;
+
+        if (battle.outcome() == PveBattle.Outcome.ONGOING) {
+            session.deadlineTick = now() + TURN_TIMEOUT_TICKS;
+        } else {
+            delta = applyOutcome(session, player);
+            session.closing = true;
+            session.deadlineTick = now() + CLOSE_TIMEOUT_TICKS;
+        }
+
+        ServerPlayNetworking.send(player, new PvePayloads.Turn(events, battle.player().hp(), battle.enemy().hp(),
+                outcomeCode(battle.outcome()), delta));
+    }
+
+    private static long applyOutcome(PveSession session, ServerPlayer player) {
+        long delta = session.battle.playerAuraDelta();
+
+        CustomPlayer.getCustomPlayerOrNew(player).addPlayerAura(Math.clamp(delta, Integer.MIN_VALUE, Integer.MAX_VALUE));
+
+        String key = switch (session.battle.outcome()) {
+            case WON -> "pve.result.won";
+            case LOST -> "pve.result.lost";
+            case FLED -> "pve.result.fled";
+            case ONGOING -> "pve.result.cancelled";
+        };
+
+        player.sendSystemMessage(Component.translatable(key, String.format("%+d", delta)));
+        return delta;
+    }
+
+    private static byte outcomeCode(PveBattle.Outcome outcome) {
+        return switch (outcome) {
+            case ONGOING -> PvePayloads.ONGOING;
+            case WON -> PvePayloads.WON;
+            case LOST -> PvePayloads.LOST;
+            case FLED -> PvePayloads.FLED;
+        };
+    }
+
+    // ---------- TICKS / DISCONNECTION ----------
 
     private static void tick(MinecraftServer server) {
         long now = server.getTickCount();
         for (PveSession session : new ArrayList<>(BY_PLAYER.values())) {
             ServerPlayer player = server.getPlayerList().getPlayer(session.playerId);
-            if (player == null) { end(session, null, false); continue; }
+            if (player == null) { finish(session, null); continue; }
+
+            if (session.closing) {
+                if (now >= session.deadlineTick) finish(session, player);
+                continue;
+            }
 
             boolean abnormal = !session.mob.isAlive() || session.mob.isRemoved() || !player.isAlive()
                     || session.mob.level() != player.level() || session.mob.distanceToSqr(player) > MAX_DISTANCE * MAX_DISTANCE;
-            if (abnormal) {                       // combat annulé sans pénalité
-                end(session, player, false);
-                player.sendSystemMessage(PveText.result(PveBattle.Outcome.ONGOING, 0));
-            } else if (now >= session.deadlineTick) {   // trop long : fuite
+            if (abnormal) {
+                cancel(session, player);
+            } else if (now >= session.deadlineTick) {
                 player.sendSystemMessage(Component.translatable("pve.timeout"));
-                for (BattleEvent e : session.battle.flee()) player.sendSystemMessage(PveText.describe(e, session.battle));
-                end(session, player, true);
+                afterTurn(session, player, session.battle.flee());
             }
         }
+    }
+
+    private static void cancel(PveSession session, ServerPlayer player) {
+        ServerPlayNetworking.send(player, new PvePayloads.Turn(List.of(), session.battle.player().hp(),
+                session.battle.enemy().hp(), PvePayloads.CANCELLED, 0));
+        player.sendSystemMessage(Component.translatable("pve.result.cancelled"));
+        finish(session, player);
     }
 
     private static void onDisconnect(ServerPlayer player) {
         PveSession session = BY_PLAYER.get(player.getUUID());
         if (session == null) return;
-        session.battle.flee();       // déconnexion = fuite, avec sa pénalité (appliquée avant la sauvegarde du joueur)
-        end(session, player, true);
+        if (!session.closing) {
+            session.battle.flee();
+            applyOutcome(session, player);
+        }
+        finish(session, player);
     }
 
     private static void abortAll() {
         for (PveSession s : new ArrayList<>(BY_PLAYER.values()))
-            end(s, server == null ? null : server.getPlayerList().getPlayer(s.playerId), false);
+            finish(s, server == null ? null : server.getPlayerList().getPlayer(s.playerId));
     }
 
-    private static void end(PveSession session, @Nullable ServerPlayer player, boolean applyOutcome) {
+    // ---------- END ----------
+
+    private static void finish(PveSession session, @Nullable ServerPlayer player) {
         BY_PLAYER.remove(session.playerId);
         BY_ENTITY.remove(session.mob.getUUID());
 
         session.mob.setNoAi(session.mobWasNoAI);
         session.mob.setPermanentlyInvulnerable(session.mobWasInvulnerable);
         if (player != null) player.setPermanentlyInvulnerable(session.playerWasInvulnerable);
-        if (player == null || !applyOutcome) return;
 
-        long delta = session.battle.playerAuraDelta();
-        CustomPlayer.getCustomPlayerOrNew(player).addPlayerAura(Math.max(Integer.MIN_VALUE, Math.min(Integer.MAX_VALUE, delta)));
-        player.sendSystemMessage(PveText.result(session.battle.outcome(), delta));
-
-        if (session.battle.outcome() == PveBattle.Outcome.WON && KILL_ENEMY_ON_WIN && session.mob.level() instanceof ServerLevel level)
+        if (session.battle.outcome() == PveBattle.Outcome.WON && KILL_ENEMY_ON_WIN
+                && session.mob.isAlive() && session.mob.level() instanceof ServerLevel level)
             session.mob.kill(level);
+    }
+
+    private static long now() {
+        return server.getTickCount();
     }
 }

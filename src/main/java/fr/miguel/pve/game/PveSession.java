@@ -10,6 +10,7 @@ final class PveSession {
     final Mob mob;
     final PveBattle battle;
     long deadlineTick;
+    boolean closing;
 
     final boolean mobWasNoAI;
     final boolean mobWasInvulnerable;

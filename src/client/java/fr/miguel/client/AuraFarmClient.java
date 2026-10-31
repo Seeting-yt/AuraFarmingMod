@@ -3,6 +3,7 @@ package fr.miguel.client;
 import fr.miguel.client.events.ClientHUDEvents;
 import fr.miguel.client.gui.AuraGamblingScreen;
 import fr.miguel.client.network.BattleClientNetwork;
+import fr.miguel.client.network.PveClientNetwork;
 import fr.miguel.network.LeftClickPayload;
 import fr.miguel.network.OpenScreenPayload;
 import net.fabricmc.api.ClientModInitializer;
@@ -22,6 +23,7 @@ public class AuraFarmClient implements ClientModInitializer {
         HUDElementRegister();
 
         BattleClientNetwork.register();
+        PveClientNetwork.register();
 
         //registerPayloadTypes();
 
