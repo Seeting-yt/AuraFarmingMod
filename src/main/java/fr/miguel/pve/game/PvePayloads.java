@@ -130,8 +130,6 @@ public final class PvePayloads {
     // ---------- REGISTRIES ----------
 
     public static void register() {
-        PayloadTypeRegistry.serverboundPlay().register(Open.TYPE, Open.CODEC);
-        PayloadTypeRegistry.serverboundPlay().register(Turn.TYPE, Turn.CODEC);
         registerToClientAndServer(Action.TYPE, Action.CODEC);
         registerToClientAndServer(Close.TYPE, Close.CODEC);
 

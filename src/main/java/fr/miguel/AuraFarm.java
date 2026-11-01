@@ -14,6 +14,7 @@ import fr.miguel.network.LeftClickPayload;
 import fr.miguel.network.OpenScreenPayload;
 import fr.miguel.pve.game.PveCommand;
 import fr.miguel.pve.game.PveManager;
+import fr.miguel.pve.game.PvePayloads;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
@@ -48,6 +49,7 @@ public class AuraFarm implements ModInitializer {
 
     private void registerPVEBattleRelated() {
         PveManager.registerEvents();
+        PvePayloads.register();
         PveCommand.register();
     }
 
