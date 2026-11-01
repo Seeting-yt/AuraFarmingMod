@@ -1,9 +1,9 @@
 package fr.miguel.pve.game;
 
 
-import fr.miguel.pve.BattleEvent;
-import fr.miguel.pve.Combatant;
-import fr.miguel.pve.Side;
+import fr.miguel.pve.core.BattleEvent;
+import fr.miguel.pve.core.Combatant;
+import fr.miguel.pve.core.Side;
 import net.minecraft.network.chat.Component;
 
 @Deprecated(forRemoval = true, since = "2.1-BETA")

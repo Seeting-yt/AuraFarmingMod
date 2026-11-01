@@ -1,8 +1,8 @@
 package fr.miguel.pve.game;
 
 import fr.miguel.AuraFarm;
-import fr.miguel.pve.BattleEvent;
-import fr.miguel.pve.Side;
+import fr.miguel.pve.core.BattleEvent;
+import fr.miguel.pve.core.Side;
 import io.netty.buffer.ByteBuf;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
@@ -22,6 +22,9 @@ public final class PvePayloads {
         return new CustomPacketPayload.Type<>(AuraFarm.id(path));
     }
 
+    public record ItemInfo(int slot, int aura, int hitPercent) {}
+
+    public static final byte ACT_ITEM = 2;
 
     public static final byte ONGOING = 0, WON = 1, LOST = 2, FLED = 3, CANCELLED = 4;
 
@@ -30,13 +33,15 @@ public final class PvePayloads {
     public record AttackInfo(String id, String nameKey, int hitPercent) {}
 
     public record Open(int enemyEntityId, String enemyName, int playerHp, int playerMaxHp,
-                       int enemyHp, int enemyMaxHp, List<AttackInfo> attacks) implements CustomPacketPayload {
+                       int enemyHp, int enemyMaxHp, List<AttackInfo> attacks, List<ItemInfo> items)
+            implements CustomPacketPayload {
 
         public static final Type<Open> TYPE = payloadType("pve_open");
         public static final StreamCodec<FriendlyByteBuf, Open> CODEC = CustomPacketPayload.codec(Open::write, Open::new);
 
         private Open(FriendlyByteBuf b) {
-            this(b.readVarInt(), b.readUtf(), b.readVarInt(), b.readVarInt(), b.readVarInt(), b.readVarInt(), readAttacks(b));
+            this(b.readVarInt(), b.readUtf(), b.readVarInt(), b.readVarInt(), b.readVarInt(), b.readVarInt(),
+                    readAttacks(b), readItems(b));
         }
 
         private static List<AttackInfo> readAttacks(FriendlyByteBuf b) {
@@ -46,15 +51,24 @@ public final class PvePayloads {
             return list;
         }
 
+        private static List<ItemInfo> readItems(FriendlyByteBuf b) {
+            int n = b.readVarInt();
+            List<ItemInfo> list = new ArrayList<>(n);
+            for (int i = 0; i < n; i++) list.add(new ItemInfo(b.readVarInt(), b.readVarInt(), b.readVarInt()));
+            return list;
+        }
+
         private void write(FriendlyByteBuf b) {
             b.writeVarInt(enemyEntityId); b.writeUtf(enemyName);
             b.writeVarInt(playerHp); b.writeVarInt(playerMaxHp);
             b.writeVarInt(enemyHp); b.writeVarInt(enemyMaxHp);
             b.writeVarInt(attacks.size());
             for (AttackInfo a : attacks) { b.writeUtf(a.id()); b.writeUtf(a.nameKey()); b.writeVarInt(a.hitPercent()); }
+            b.writeVarInt(items.size());
+            for (ItemInfo it : items) { b.writeVarInt(it.slot()); b.writeVarInt(it.aura()); b.writeVarInt(it.hitPercent()); }
         }
 
-        @Override public @NonNull Type<Open> type() { return TYPE; }
+        @Override public Type<Open> type() { return TYPE; }
     }
 
     // ---------- S2C ----------
@@ -109,12 +123,12 @@ public final class PvePayloads {
     }
 
     // ---------- C2S ----------
-    public record Action(byte action, String attackId) implements CustomPacketPayload {
+    public record Action(byte action, String attackId, int slot) implements CustomPacketPayload {
         public static final Type<Action> TYPE = payloadType("pve_action");
         public static final StreamCodec<FriendlyByteBuf, Action> CODEC = CustomPacketPayload.codec(Action::write, Action::new);
 
-        private Action(FriendlyByteBuf b) { this(b.readByte(), b.readUtf(128)); }
-        private void write(FriendlyByteBuf b) { b.writeByte(action); b.writeUtf(attackId, 128); }
+        private Action(FriendlyByteBuf b) { this(b.readByte(), b.readUtf(128), b.readVarInt()); }
+        private void write(FriendlyByteBuf b) { b.writeByte(action); b.writeUtf(attackId, 128); b.writeVarInt(slot); }
 
         @Override public Type<Action> type() { return TYPE; }
     }
@@ -141,6 +155,7 @@ public final class PvePayloads {
                 switch (payload.action()) {
                     case ACT_ATTACK -> PveManager.attack(player, payload.attackId());
                     case ACT_FLEE -> PveManager.flee(player);
+                    case ACT_ITEM -> PveManager.useItem(player, payload.slot());
                 }
             } catch (PveManager.PveException e) {
                 player.sendSystemMessage(e.text());

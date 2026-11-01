@@ -84,5 +84,9 @@
   "pve.screen.flee": "Flee",
   "pve.screen.back": "Back",
   "pve.screen.close": "Close",
-  "pve.screen.miss": "Miss!"
+  "pve.screen.miss": "Miss!",
+
+  "attack.miguelaurafarming.sword_strike": "Sword Strike",
+  "pve.screen.item_entry": "%s - aura %s (%s%%)",
+  "pve.error.bad_item": "Unusable item."
 }

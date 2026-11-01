@@ -2,9 +2,11 @@ package fr.miguel.pve.game;
 
 import fr.miguel.battle.BattleManager;
 import fr.miguel.player.CustomPlayer;
-import fr.miguel.pve.*;
-import fr.miguel.pve.attack.AttackInterface;
-import fr.miguel.pve.attack.AttackRegistry;
+import fr.miguel.pve.core.*;
+import fr.miguel.pve.core.attack.AttackInterface;
+import fr.miguel.pve.core.mob.MobProfile;
+import fr.miguel.pve.core.mob.MobProfiles;
+import fr.miguel.pve.core.registries.AttackRegistry;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
@@ -111,9 +113,21 @@ public final class PveManager {
             infos.add(new PvePayloads.AttackInfo(attack.id(), attack.nameKey(),
                     (int) Math.round(100 * BattleMath.hitChance(playerSide.aura(), enemySide.aura(), attack.accuracy()))));
 
+        List<PvePayloads.ItemInfo> items = new ArrayList<>();
+        for (CombatItems.Usable usable : CombatItems.usable(serverPlayer))
+            items.add(new PvePayloads.ItemInfo(usable.slot(), (int) Math.round(usable.aura()),
+                    (int) Math.round(100 * BattleMath.hitChance(playerSide.aura(), enemySide.aura(), usable.action().accuracy()))));
+
         ServerPlayNetworking.send(serverPlayer, new PvePayloads.Open(mob.getId(), enemySide.name(),
-                playerSide.hp(), playerSide.maxHp(), enemySide.hp(), enemySide.maxHp(), infos));
+                playerSide.hp(), playerSide.maxHp(), enemySide.hp(), enemySide.maxHp(), infos, items));
         return true;
+    }
+
+    public static void useItem(ServerPlayer player, int slot) throws PveException {
+        PveSession session = ongoing(player);
+        CombatItems.Usable usable = CombatItems.at(player, slot);
+        if (usable == null) throw new PveException("pve.error.bad_item");
+        afterTurn(session, player, session.battle.playerUseItem(usable.action(), usable.aura()));
     }
 
     public static void attack(ServerPlayer player, String attackId) throws PveException {

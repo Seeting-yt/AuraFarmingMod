@@ -1,7 +1,7 @@
 package fr.miguel.client.gui.pve;
 
-import fr.miguel.pve.BattleEvent;
-import fr.miguel.pve.Side;
+import fr.miguel.pve.core.BattleEvent;
+import fr.miguel.pve.core.Side;
 import fr.miguel.pve.game.PvePayloads;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.Minecraft;
@@ -12,6 +12,7 @@ import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.SwingAnimation;
 import org.jetbrains.annotations.Nullable;
 import org.jspecify.annotations.NonNull;
@@ -23,12 +24,13 @@ import java.util.List;
 
 public class PveScreen extends Screen {
 
-    private enum Menu { MAIN, ATTACKS }
+    private enum Menu { MAIN, ATTACKS, ITEMS }
 
     private record Popup(Side side, Component text, int color, int born) {}
 
     private static final int COL_BORDER = 0xFF000000, COL_PANEL = 0xE02D2D35, COL_TEXT = 0xFFFFFFFF, COL_DIM = 0xFFAAAAAA;
     private static final int BTN_W = 150, BTN_H = 20, GAP = 6, MARGIN = 12;
+    private static final int SUB_W = 220;
 
     private final PvePayloads.Open info;
     private final String playerName;
@@ -82,8 +84,12 @@ public class PveScreen extends Screen {
         rebuildWidgets();
     }
 
-    private void sendAction(byte action, String attackId) {
-        ClientPlayNetworking.send(new PvePayloads.Action(action, attackId));
+    private int btnW() {
+        return menu == Menu.MAIN || finished ? BTN_W : SUB_W;
+    }
+
+    private void sendAction(byte action, String attackId, int slot) {
+        ClientPlayNetworking.send(new PvePayloads.Action(action, attackId, slot));
         awaiting = true;
         awaitingSince = age;
         rebuildWidgets();
@@ -175,41 +181,52 @@ public class PveScreen extends Screen {
     @Override
     protected void init() {
         super.init();
-        int x = this.width - MARGIN - BTN_W;
+        int w = btnW();
+        int x = this.width - MARGIN - w;
         int bottom = this.height - MARGIN - BTN_H;
 
         if (finished) {
-            addButton(Component.translatable("pve.screen.close"), x, bottom, true, this::onClose);
+            addButton(Component.translatable("pve.screen.close"), x, bottom, w, true, this::onClose);
             return;
         }
 
         boolean active = !busy();
         if (menu == Menu.MAIN) {
-            addButton(Component.translatable("pve.screen.flee"), x, bottom, active,
-                    () -> sendAction(PvePayloads.ACT_FLEE, ""));
-            addButton(Component.translatable("pve.screen.items"), x, bottom - (BTN_H + GAP), false, () -> { });   // étape 4
-            addButton(Component.translatable("pve.screen.attack"), x, bottom - 2 * (BTN_H + GAP), active, () -> {
-                menu = Menu.ATTACKS;
-                rebuildWidgets();
-            });
-        } else {
-            addButton(Component.translatable("pve.screen.back"), x, bottom, true, () -> {
-                menu = Menu.MAIN;
-                rebuildWidgets();
-            });
-            int y = bottom - (BTN_H + GAP);
+            addButton(Component.translatable("pve.screen.flee"), x, bottom, w, active,
+                    () -> sendAction(PvePayloads.ACT_FLEE, "", 0));
+            addButton(Component.translatable("pve.screen.items"), x, bottom - (BTN_H + GAP), w,
+                    active && !info.items().isEmpty(), () -> { menu = Menu.ITEMS; rebuildWidgets(); });
+            addButton(Component.translatable("pve.screen.attack"), x, bottom - 2 * (BTN_H + GAP), w, active,
+                    () -> { menu = Menu.ATTACKS; rebuildWidgets(); });
+            return;
+        }
+
+        addButton(Component.translatable("pve.screen.back"), x, bottom, w, true,
+                () -> { menu = Menu.MAIN; rebuildWidgets(); });
+        int y = bottom - (BTN_H + GAP);
+
+        if (menu == Menu.ATTACKS) {
             for (PvePayloads.AttackInfo a : info.attacks()) {
-                addButton(Component.translatable(a.nameKey()).append(" (" + a.hitPercent() + "%)"), x, y, active,
-                        () -> sendAction(PvePayloads.ACT_ATTACK, a.id()));
+                addButton(Component.translatable(a.nameKey()).append(" (" + a.hitPercent() + "%)"), x, y, w, active,
+                        () -> sendAction(PvePayloads.ACT_ATTACK, a.id(), 0));
+                y -= BTN_H + GAP;
+            }
+        } else {
+            Minecraft mc = Minecraft.getInstance();
+            for (PvePayloads.ItemInfo it : info.items()) {
+                ItemStack stack = mc.player.getInventory().getItem(it.slot());
+                Component text = Component.translatable("pve.screen.item_entry", stack.getHoverName(), it.aura(), it.hitPercent());
+                addButton(text, x, y, w, active && !stack.isEmpty(),
+                        () -> sendAction(PvePayloads.ACT_ITEM, "", it.slot()));
                 y -= BTN_H + GAP;
             }
         }
     }
 
-    private void addButton(Component text, int x, int y, boolean active, Runnable action) {
-        Button button = Button.builder(text, btn -> action.run()).bounds(x, y, BTN_W, BTN_H).build();
-        button.active = active;
-        addRenderableWidget(button);
+    private void addButton(Component text, int x, int y, int w, boolean active, Runnable action) {
+        Button b = Button.builder(text, btn -> action.run()).bounds(x, y, w, BTN_H).build();
+        b.active = active;
+        addRenderableWidget(b);
     }
 
 
