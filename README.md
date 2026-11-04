@@ -26,7 +26,7 @@ To install this mod, you need the **Fabric modloader** and the following depende
 ## 🚀 Roadmap & Future Plans
 
 - [ ] Add more unique and diverse attacks for **Aura Battles**.
-- [ ] Add in-game random events with Aura Gambling to influence probabilities.
+- [x] Add in-game random events with Aura Gambling to influence probabilities.
 - [ ] Create an in-game tutorial guide.
 
 *(Screenshots and GIFs coming soon!)*
