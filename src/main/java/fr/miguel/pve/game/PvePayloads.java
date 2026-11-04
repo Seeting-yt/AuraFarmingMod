@@ -146,6 +146,8 @@ public final class PvePayloads {
     public static void register() {
         registerToClientAndServer(Action.TYPE, Action.CODEC);
         registerToClientAndServer(Close.TYPE, Close.CODEC);
+        registerToClientAndServer(PvePayloads.Open.TYPE, PvePayloads.Open.CODEC);
+        registerToClientAndServer(PvePayloads.Turn.TYPE, PvePayloads.Turn.CODEC);
 
         ServerPlayNetworking.registerGlobalReceiver(Action.TYPE, (payload, context) -> {
 

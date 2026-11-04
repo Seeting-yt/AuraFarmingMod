@@ -14,8 +14,6 @@ public class AuraSliderComponent extends AbstractSliderButton {
     private int maximalValue;
     private int actualValue;
 
-    private final CustomPlayer customPlayer;
-
     private static final int PADDING = 16;
 
     public AuraSliderComponent(int x, int y, int width, int height) {
@@ -23,14 +21,13 @@ public class AuraSliderComponent extends AbstractSliderButton {
 
         Player player = Minecraft.getInstance().player;
 
-        if (player == null) {
-            customPlayer = null;
+
+        if (player == null)
             return;
-        }
 
-        customPlayer = CustomPlayer.getCustomPlayerOrNew(player);
+        CustomPlayer customPlayer = CustomPlayer.getCustomPlayerOrNew(player);
 
-        this.maximalValue = (int) this.customPlayer.getPlayerAura();
+        this.maximalValue = (int) customPlayer.getPlayerAura();
 
         updateMessage();
     }

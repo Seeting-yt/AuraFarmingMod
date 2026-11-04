@@ -1,17 +1,22 @@
 package fr.miguel;
 
-import fr.miguel.api.events.AuraChangedCallBack;
+import fr.miguel.api.config.AuraConfig;
+import fr.miguel.api.events.aura.AuraChangedCallBack;
+import fr.miguel.api.events.random.RandomEventCallBack;
 import fr.miguel.api.tasks.DelayedTasks;
 import fr.miguel.battle.BattleCommand;
 import fr.miguel.battle.BattleManager;
 import fr.miguel.commands.AuraCommands;
 import fr.miguel.component.ModDataComponentTypes;
 import fr.miguel.events.PlayerEvents;
+import fr.miguel.gambling_events.GamblingEvents;
 import fr.miguel.items.ModItems;
 import fr.miguel.menu.ModMenuTypes;
 import fr.miguel.network.BattlePayloads;
 import fr.miguel.network.LeftClickPayload;
 import fr.miguel.network.OpenScreenPayload;
+import fr.miguel.player.CustomPlayer;
+import fr.miguel.player.PlayerPayloads;
 import fr.miguel.pve.game.PveCommand;
 import fr.miguel.pve.game.PveManager;
 import fr.miguel.pve.game.PvePayloads;
@@ -19,6 +24,7 @@ import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
@@ -31,6 +37,8 @@ public class AuraFarm implements ModInitializer {
 
     @Override
     public void onInitialize() {
+
+        AuraConfig.load();
 
         DelayedTasks.init();
 
@@ -71,7 +79,7 @@ public class AuraFarm implements ModInitializer {
         PayloadTypeRegistry.clientboundPlay().register(OpenScreenPayload.TYPE, OpenScreenPayload.CODEC);
         PayloadTypeRegistry.serverboundPlay().register(OpenScreenPayload.TYPE, OpenScreenPayload.CODEC);
 
-
+        PlayerPayloads.register();
     }
 
     private void registerComponentToBuiltInRegistries() {
@@ -82,7 +90,12 @@ public class AuraFarm implements ModInitializer {
 
     private void registerEvents() {
         ServerPlayerEvents.JOIN
-                .register(PlayerEvents::onPlayerJoin);
+                .register(CustomPlayer::createInstanceOnJoin);
+        ServerPlayerEvents.LEAVE
+                        .register(CustomPlayer::saveDataOnLeave);
+
+        ServerLifecycleEvents.BEFORE_SAVE
+                .register(CustomPlayer::savePlayersData);
 
         ServerLivingEntityEvents.ALLOW_DAMAGE.register(PlayerEvents::onPlayerGetHurt);
 
@@ -95,13 +108,24 @@ public class AuraFarm implements ModInitializer {
 
         AttackEntityCallback.EVENT.register(PlayerEvents::onPlayerAttack);
 
+        RandomEventCallBack.EVENT.register(PlayerEvents::onRandomGambling);
 
+        AuraChangedCallBack.EVENT.register(CustomPlayer::changePlayerXpValue);
+
+        RandomEventCallBack.EVENT.register(eventInstance ->
+                System.out.println("MAIN EVENT"));
+
+        RandomEventCallBack.AfterGambling.EVENT.register(eventInstance ->
+                System.out.println("AFTER GAMBLING"));
+
+        RandomEventCallBack.BeforeScreen.EVENT.register(eventInstance ->
+                System.out.println("BEFORE SCREEN"));
     }
 
     private void registerPacketEvent() {
         ServerPlayNetworking.registerGlobalReceiver(LeftClickPayload.TYPE, PlayerEvents::onPlayerMissAttack);
 
-
+        ServerPlayNetworking.registerGlobalReceiver(PlayerPayloads.GamblingEvent.TYPE, GamblingEvents::activatePickedEventAfterGambling);
     }
     public static Identifier id(String id) {
         return Identifier.fromNamespaceAndPath(MOD_ID, id);

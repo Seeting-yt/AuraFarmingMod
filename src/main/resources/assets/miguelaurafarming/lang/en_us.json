@@ -88,5 +88,7 @@
 
   "attack.miguelaurafarming.sword_strike": "Sword Strike",
   "pve.screen.item_entry": "%s - aura %s (%s%%)",
-  "pve.error.bad_item": "Unusable item."
+  "pve.error.bad_item": "Unusable item.",
+  "gambling.event.message": "A %s event occured!",
+  "gambling.event.multiply.message": "Your aura just got multiply by %s! Congrats!"
 }

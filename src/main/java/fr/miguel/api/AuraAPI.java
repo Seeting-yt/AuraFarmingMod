@@ -1,5 +1,6 @@
 package fr.miguel.api;
 
+import fr.miguel.api.config.AuraConfig;
 import fr.miguel.component.ModDataComponentTypes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.tags.ItemTags;
@@ -17,18 +18,56 @@ public class AuraAPI {
             ItemTags.COPPER_TOOL_MATERIALS, ItemTags.STONE_TOOL_MATERIALS, ItemTags.GOLD_TOOL_MATERIALS,
             ItemTags.DIAMOND_TOOL_MATERIALS, ItemTags.NETHERITE_TOOL_MATERIALS);
 
-    //TODO CHANGE AURA POINTS CALCULUS THAT ARE JUST ABSURD
-    private static final String someStringM = "a0d58aae24d5b32c32d84a07ec23653a47fdf44ef3b96e4af25529dcf684c1d5";
     public static double auraPointCostForEnchant(int enchantingLevel) {
-        return (int) (67*Math.log(6.7)*enchantingLevel); // = 127 * level
+        return enchantingLevel * AuraConfig.getInstance().enchantAuraMultiplier;
     }
 
     public static double auraPointCostForDamage(float damageAmount) {
-        return Math.log((Math.abs(Long.parseUnsignedLong(someStringM.substring(0, 16), 16)) * damageAmount) + 1);
+        return damageAmount * AuraConfig.getInstance().damageAuraMultiplier;
     }
 
     public static double auraPointGainedOnMLG(double fallDistance) {
-        return 1 + Math.exp(1.67 * Math.log(fallDistance));
+        return AuraConfig.getInstance().MLGScaleFactor * Math.pow(fallDistance, AuraConfig.getInstance().MLGExponent);
+    }
+
+    public static int auraBonusForItemTier(TagKey<Item> tag) {
+        if (tag.equals(ItemTags.NETHERITE_TOOL_MATERIALS)) return AuraConfig.getInstance().netheriteBonus;
+        if (tag.equals(ItemTags.DIAMOND_TOOL_MATERIALS))   return AuraConfig.getInstance().diamondBonus;
+        if (tag.equals(ItemTags.GOLD_TOOL_MATERIALS))      return AuraConfig.getInstance().goldBonus;
+        if (tag.equals(ItemTags.IRON_TOOL_MATERIALS))      return AuraConfig.getInstance().ironBonus;
+        if (tag.equals(ItemTags.COPPER_TOOL_MATERIALS))    return AuraConfig.getInstance().copperBonus;
+        if (tag.equals(ItemTags.STONE_TOOL_MATERIALS))     return AuraConfig.getInstance().stoneBonus;
+        if (tag.equals(ItemTags.WOODEN_TOOL_MATERIALS))    return AuraConfig.getInstance().woodenBonus;
+        return 0;
+    }
+
+    public static int auraBonusForItemTier(ItemStack itemStack) {
+        if (itemStack.isDamageableItem()) {
+            return (int) (itemStack.getMaxDamage() * 0.05);
+        }
+        return 0;
+    }
+
+    public static boolean hasAura(ItemStack itemStack) {
+        return itemStack.has(ModDataComponentTypes.AURA_ITEM_DURABILITY);
+    }
+
+
+    public static int getAuraDurability(ItemStack itemStack) {
+        return itemStack.getOrDefault(ModDataComponentTypes.AURA_ITEM_DURABILITY, getMaxAuraDurability(itemStack));
+    }
+
+
+    public static int getMaxAuraDurability(ItemStack itemStack) {
+
+        if (itemStack.isDamageableItem())
+            return 2 * itemStack.getMaxDamage();
+        return 0;
+    }
+
+
+    public static void setAuraDurability(ItemStack itemStack, int value) {
+        itemStack.set(ModDataComponentTypes.AURA_ITEM_DURABILITY, value);
     }
 
     public static void sendAuraPointLostToPlayer(Player player, double amount) {
@@ -61,53 +100,6 @@ public class AuraAPI {
                 amount);
     }
 
-    public static boolean hasAura(ItemStack itemStack) {
-        return itemStack.has(ModDataComponentTypes.AURA_ITEM_DURABILITY);
-    }
-
-
-    public static int getAuraDurability(ItemStack itemStack) {
-        return itemStack.getOrDefault(ModDataComponentTypes.AURA_ITEM_DURABILITY, getMaxAuraDurability(itemStack));
-    }
-
-
-    public static int getMaxAuraDurability(ItemStack itemStack) {
-
-        if (itemStack.isDamageableItem())
-            return 67*itemStack.getMaxDamage();
-        return 0;
-    }
-
-
-    public static void setAuraDurability(ItemStack itemStack, int value) {
-        itemStack.set(ModDataComponentTypes.AURA_ITEM_DURABILITY, value);
-    }
-
-    public static int auraBonusForItemTier(TagKey<Item> tag) {
-        if (tag.equals(ItemTags.NETHERITE_TOOL_MATERIALS)) {
-            return (int) Math.exp(6.7 * Math.log(20));
-        } else if (tag.equals(ItemTags.DIAMOND_TOOL_MATERIALS)) {
-            return (int) Math.exp(6.7 * Math.log(17));
-        } else if (tag.equals(ItemTags.GOLD_TOOL_MATERIALS)) {
-            return (int) Math.exp(6.7 * Math.log(8));
-        } else if (tag.equals(ItemTags.IRON_TOOL_MATERIALS)) {
-            return (int) Math.exp(6.7 * Math.log(10));
-        } else if (tag.equals(ItemTags.COPPER_TOOL_MATERIALS)) {
-            return (int) Math.exp(6.7 * Math.log(7));
-        } else if (tag.equals(ItemTags.STONE_TOOL_MATERIALS)) {
-            return (int) Math.exp(6.7 * Math.log(5));
-        } else if (tag.equals(ItemTags.WOODEN_TOOL_MATERIALS)) {
-            return (int) Math.exp(6.7 * Math.log(2));
-        }
-        return 0;
-    }
-
-    public static int auraBonusForItemTier(ItemStack itemStack) {
-        if (itemStack.isDamageableItem()) {
-            return (int) Math.log(itemStack.getMaxDamage() * Math.exp(6.7) + 1);
-        }
-        return 0;
-    }
 
     public static boolean isItemOfAll(ItemStack itemStack, List<TagKey<Item>> tags) {
        for (TagKey<Item> tag : tags) {

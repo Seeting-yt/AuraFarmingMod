@@ -6,6 +6,8 @@ import fr.miguel.client.network.BattleClientNetwork;
 import fr.miguel.client.network.PveClientNetwork;
 import fr.miguel.network.LeftClickPayload;
 import fr.miguel.network.OpenScreenPayload;
+import fr.miguel.player.CustomPlayer;
+import fr.miguel.player.PlayerPayloads;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
@@ -13,6 +15,7 @@ import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.resources.Identifier;
 
 public class AuraFarmClient implements ClientModInitializer {
@@ -36,6 +39,18 @@ public class AuraFarmClient implements ClientModInitializer {
                 ((payload, context)
                         -> Minecraft.getInstance().execute(()
                         -> Minecraft.getInstance().setScreenAndShow(new AuraGamblingScreen()))));
+
+        ClientPlayNetworking.registerGlobalReceiver(PlayerPayloads.AuraChangedPayload.TYPE,
+                (payload, context) ->
+                context.client().execute(() -> {
+                    LocalPlayer localPlayer = context.player();
+
+                    if (localPlayer.getUUID().equals(payload.playerID())) {
+                        CustomPlayer customPlayer = CustomPlayer.getCustomPlayerOrNew(localPlayer);
+
+                        customPlayer.setAuraClient(payload.playerAura());
+                    }
+                }));
     }
 
     private void registerPayloadTypes() {

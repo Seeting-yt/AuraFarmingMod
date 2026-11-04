@@ -1,6 +1,8 @@
 package fr.miguel.events;
 
 import fr.miguel.api.AuraAPI;
+import fr.miguel.api.events.aura.AuraChangedEvent;
+import fr.miguel.api.events.random.RandomAuraGambleEvent;
 import fr.miguel.network.LeftClickPayload;
 import fr.miguel.player.CustomPlayer;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
@@ -88,11 +90,10 @@ public class PlayerEvents {
 
     }
 
-    public static InteractionResult onAuraChanged(CustomPlayer customPlayer, double oldAmount, double newAmount) {
+    public static void onAuraChanged(AuraChangedEvent event) {
+        if (!event.isCanceled())
+            event.getCustomPlayer().getAssociatedPlayer().experienceLevel = (int) event.getNewAmount();
 
-        customPlayer.getAssociatedPlayer().experienceLevel = (int) newAmount;
-
-        return InteractionResult.PASS;
     }
 
     public static InteractionResult onPlayerAttack(Player player, Level level, InteractionHand interactionHand,
@@ -145,5 +146,9 @@ public class PlayerEvents {
                 }
             }
         });
+    }
+
+    public static void onRandomGambling(RandomAuraGambleEvent event) {
+
     }
 }

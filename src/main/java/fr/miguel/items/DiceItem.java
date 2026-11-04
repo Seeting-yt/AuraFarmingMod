@@ -29,6 +29,7 @@ public class DiceItem extends Item {
             MinecraftServer server = serverPlayer.level().getServer();
             ServerPlayNetworking.send(serverPlayer, new OpenScreenPayload());
 
+            player.getInventory().removeItem(itemStack);
 
             DelayedTasks.schedule(server, 3, () -> itemStack.set(ModDataComponentTypes.AURA_DICE_STATE, 1));
 

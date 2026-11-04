@@ -6,7 +6,8 @@
   "mixins": [
     "AuraItemBarMixin",
     "EnchantmentScreenHandler",
-    "PlayerFightingDropItemMixin"
+    "PlayerFightingDropItemMixin",
+    "PlayerMixin"
   ],
   "injectors": {
     "defaultRequire": 1

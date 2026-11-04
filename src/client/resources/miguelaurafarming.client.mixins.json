@@ -13,6 +13,7 @@
   },
   "mixins": [
     "EnchantmentScreenMixin",
+    "LocalPlayerMixin",
     "LeftClickMixin"
   ]
 }
