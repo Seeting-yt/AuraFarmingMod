@@ -26,6 +26,7 @@ import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
+import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
@@ -108,18 +109,15 @@ public class AuraFarm implements ModInitializer {
 
         AttackEntityCallback.EVENT.register(PlayerEvents::onPlayerAttack);
 
+        PlayerBlockBreakEvents.BEFORE.register(PlayerEvents::onPlayerMine);
+
         RandomEventCallBack.EVENT.register(PlayerEvents::onRandomGambling);
 
         AuraChangedCallBack.EVENT.register(CustomPlayer::changePlayerXpValue);
 
-        RandomEventCallBack.EVENT.register(eventInstance ->
-                System.out.println("MAIN EVENT"));
+        RandomEventCallBack.AfterGambling.EVENT.register(PlayerEvents::onRandomGamblingAfter);
 
-        RandomEventCallBack.AfterGambling.EVENT.register(eventInstance ->
-                System.out.println("AFTER GAMBLING"));
-
-        RandomEventCallBack.BeforeScreen.EVENT.register(eventInstance ->
-                System.out.println("BEFORE SCREEN"));
+        RandomEventCallBack.BeforeScreen.EVENT.register(PlayerEvents::onRandomGamblingBefore);
     }
 
     private void registerPacketEvent() {

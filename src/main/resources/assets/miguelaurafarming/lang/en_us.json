@@ -90,5 +90,10 @@
   "pve.screen.item_entry": "%s - aura %s (%s%%)",
   "pve.error.bad_item": "Unusable item.",
   "gambling.event.message": "A %s event occured!",
-  "gambling.event.multiply.message": "Your aura just got multiply by %s! Congrats!"
+  "gambling.event.multiply.message": "Your aura just got multiply by %s! Congrats!",
+
+  "advancements.aurafarm.root.title": "Aura Farm Advancements",
+  "advancements.aurafarm.root.description": "You'll have to discover these al by yourself!",
+  "advancements.aurafarm.obsidian.title": "Was it really worth it?",
+  "advancements.aurafarm.obsidian.description": "Spend 1 minute and 23 secondes to break a block and obtain... nothing."
 }

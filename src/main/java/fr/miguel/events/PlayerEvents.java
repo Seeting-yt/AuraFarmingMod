@@ -1,13 +1,21 @@
 package fr.miguel.events;
 
+import fr.miguel.AuraFarm;
 import fr.miguel.api.AuraAPI;
 import fr.miguel.api.events.aura.AuraChangedEvent;
 import fr.miguel.api.events.random.RandomAuraGambleEvent;
 import fr.miguel.network.LeftClickPayload;
 import fr.miguel.player.CustomPlayer;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.minecraft.advancements.AdvancementHolder;
+import net.minecraft.advancements.AdvancementProgress;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.ServerAdvancementManager;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -17,25 +25,23 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.enchantment.Enchantment;
+import net.minecraft.world.item.enchantment.Enchantments;
+import net.minecraft.world.item.enchantment.ItemEnchantments;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import org.jspecify.annotations.Nullable;
 
 import java.util.List;
 
-
-public class PlayerEvents {
-    public static void onPlayerJoin(Player player) {
-        CustomPlayer customPlayer =
-                CustomPlayer.getCustomPlayerOrNew(player);
-
-        customPlayer.setPlayerAura(player.getRandom().nextDouble()*67);
-
-
-    }
-    
-
+/**
+ * All player related registered events
+ */
+public final class PlayerEvents {
 
     public static boolean onPlayerGetHurt(LivingEntity livingEntity,
                                           DamageSource damageSource,
@@ -148,7 +154,96 @@ public class PlayerEvents {
         });
     }
 
-    public static void onRandomGambling(RandomAuraGambleEvent event) {
 
+
+    public static boolean onPlayerMine(Level level, Player player,
+                                    BlockPos blockPos, BlockState blockState,
+                                    @Nullable BlockEntity blockEntity) {
+
+        if (level.isClientSide()) return true;
+
+        if (!(player instanceof ServerPlayer serverPlayer)
+                || !(level instanceof ServerLevel serverLevel)) return true;
+
+        ItemStack itemStack = serverPlayer.getMainHandItem();
+
+        if (itemStack.is(Items.WOODEN_PICKAXE) && blockState.is(Blocks.OBSIDIAN))
+            onPlayerMineObsidian(serverLevel, itemStack, serverPlayer);
+
+        if (AuraAPI.isItemOfAll(itemStack, List.of(ItemTags.PICKAXES))) {
+            int newAuraItem = AuraAPI.auraBonusForItemTier(itemStack);
+
+            int auraItem = AuraAPI.getAuraDurability(itemStack);
+
+            int maxAuraItem = AuraAPI.getMaxAuraDurability(itemStack);
+
+
+            boolean bonus = AuraAPI.isItemOfAll(itemStack, List.of(ItemTags.COAL_ORES,
+                    ItemTags.COPPER_ORES, ItemTags.DIAMOND_ORES, ItemTags.EMERALD_ORES,
+                    ItemTags.GOLD_ORES, ItemTags.IRON_ORES, ItemTags.LAPIS_ORES,
+                    ItemTags.REDSTONE_ORES));
+
+            if (bonus) {
+                if (auraItem + newAuraItem >= maxAuraItem) {
+                    AuraAPI.setAuraDurability(itemStack, maxAuraItem);
+                    CustomPlayer.getCustomPlayerOrNew(player).addPlayerAura((auraItem + newAuraItem) - maxAuraItem);
+                } else {
+                    AuraAPI.setAuraDurability(itemStack, auraItem + newAuraItem);
+                }
+            } else {
+                if (auraItem <= newAuraItem) {
+                    AuraAPI.setAuraDurability(itemStack, 0);
+                    CustomPlayer.getCustomPlayerOrNew(player).removePlayerAura(newAuraItem - auraItem);
+                } else {
+                    AuraAPI.setAuraDurability(itemStack, auraItem - newAuraItem);
+                }
+            }
+        }
+
+        return true;
     }
+
+    public static void onPlayerMineObsidian(ServerLevel level, ItemStack itemStack,
+                                            ServerPlayer serverPlayer) {
+
+        var enchantRegistry = level.registryAccess().lookupOrThrow(Registries.ENCHANTMENT);
+
+        ItemEnchantments enchantments = itemStack.getEnchantments();
+
+        List<ResourceKey<Enchantment>> criteriaList = List.of(Enchantments.FORTUNE,
+                Enchantments.EFFICIENCY, Enchantments.MENDING, Enchantments.UNBREAKING);
+
+        for (var criteria : criteriaList) {
+            var holder = enchantRegistry.getOrThrow(criteria);
+
+            int enchantmentLevel = enchantments.getLevel(holder);
+
+            int maxLevel = holder.value().getMaxLevel();
+
+            if (enchantmentLevel != maxLevel) {
+                return;
+            }
+        }
+
+        ServerAdvancementManager advancementManager = level.getServer().getAdvancements();
+        AdvancementHolder advancement = advancementManager.get(AuraFarm.id("mine_obsidian"));
+
+        if (advancement != null) {
+            AdvancementProgress progress = serverPlayer.getAdvancements()
+                    .getOrStartProgress(advancement);
+
+            for (String criteria : progress.getRemainingCriteria())
+                serverPlayer.getAdvancements().award(advancement, criteria);
+
+        }
+    }
+
+
+    public static void onRandomGambling(RandomAuraGambleEvent event) {}
+
+    public static void onRandomGamblingBefore(RandomAuraGambleEvent event) {}
+
+    public static void onRandomGamblingAfter(RandomAuraGambleEvent event) {}
+
+
 }
